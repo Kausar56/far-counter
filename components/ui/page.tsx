@@ -11,7 +11,7 @@ import {
   REWARD_DECIMALS,
   REWARD_SYMBOL,
 } from "@/lib/counter-config";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits } from "viem";
 import {
   useAccount,
@@ -22,6 +22,7 @@ import {
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
+import { APP_URL } from "@/lib/constants";
 
 const contractAddress = COUNTER_CONTRACT;
 const DEV_FID = Number(process.env.NEXT_PUBLIC_DEV_FID || "0");
@@ -63,6 +64,7 @@ export default function Page() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showFollow, setShowFollow] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const lastComposedHashRef = useRef<`0x${string}` | undefined>();
 
   const handleFollowDev = async () => {
     localStorage.setItem("follow-dev-dismissed", "true");
@@ -159,6 +161,21 @@ export default function Page() {
       setStatus("Increment confirmed onchain");
       setShowSuccess(true);
       haptics?.notificationOccurred?.("success");
+
+      if (
+        actions?.composeCast &&
+        txHash &&
+        lastComposedHashRef.current !== txHash
+      ) {
+        lastComposedHashRef.current = txHash;
+        const claimText = `Just claimed ${rewardDisplayFixed} ${REWARD_SYMBOL} on Farcrement. \n\n Tap every 6h to stack rewards. \n\n Come claim yours 👇`;
+        actions
+          .composeCast({
+            text: claimText,
+            embeds: [APP_URL!],
+          })
+          .catch((err) => console.error("composeCast failed", err));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConfirmed]);
